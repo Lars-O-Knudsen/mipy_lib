@@ -1,5 +1,5 @@
 
-from lib import logging 
+from mipy_lib import logging 
 from collections import OrderedDict
 import gc
 
