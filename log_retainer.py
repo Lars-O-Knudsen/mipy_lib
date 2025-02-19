@@ -107,11 +107,20 @@ class LogRetainHandler(logging.Handler):
 
 
     async def getLogEntries(self):
+        """Generator that returns currently retained messages and their log seq #"""
         for idx,txt in self._index.items():
             yield idx,txt
 
 
     def get(self, data, logger):
+        """ Convienience method that makes it possible to add this class as
+            a resource to the webserver (server.py) directly:
+                    logRetainers = [h for h in logger.handlers if isinstance( h, LogRetainHandler)]
+                    if len(logRetainers) > 0:
+                        app.add_resource( logRetainers[0], "/api/log", logger=logger)
+            A list of the retained messages and their log seq # will be returned
+            with newest entry first
+        """
         for idx in reversed(list(self._index.keys())):
             yield f"{idx}> {self._index[idx]}\n"
         gc.collect()
