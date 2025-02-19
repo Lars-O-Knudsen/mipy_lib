@@ -1,5 +1,32 @@
 
-from mipy_lib import logging 
+
+# This is a micropython module that is used to keep/retain a defined number of the most recent log 
+# entries in the memory of the device running a mipy application.
+# 
+# Messages are kept by logging level. So you define how many INFO,WARNING,ERROR & CRITICAL 
+# most recent messages are to be kept separately. This way INFO messages will not move any
+# ERROR messages out of view.
+#
+# Messages are kept in chonological order depite being kept by log level. Each log message 
+# is assigned a sequental id that helps keep messages in order.
+#
+# It works by adding an instance of LogRetainHandler as a handler to logging.
+# The LogRetainHandler contructor takes two parameters:
+#   - retain: a dict[log_level,number_to_retain]
+#           Example: {logging.INFO:50,logging.WARNING:20,logging.ERROR:15,logging.CRITICAL:15}
+#           The DEFAULT_RETAIN var contains the default config.
+#  - level: the minimum level to be kept at all
+#
+# Filters can be applied using the LogRetainFilter class. This will enable you to keep
+# a defined number of entries for a [name,level] combination. 
+# Example: if you have a recurring task FREQ_LOG_TASK that logs often, it will squeeze out more infrequent
+#          logging tasks. By setting up the FREQ_LOG_TASK to log under the name "FREQ_LOG_TASK" (using ContextLogger) you can then
+#          create a filter LogRetainFilter("FREQ_LOG_TASK", logging.INFO, 10) and add it to the LogRetainHandler.
+#          Now only the 10 most recent INFO logs from FREQ_LOG_TASK will be retained and there will be room
+#          for more infrequent logged INFO messages as well.
+# You can also use the predefined LogRetainSuppress class to suppress messages from a certain logger all together.
+
+import logging 
 from collections import OrderedDict
 import gc
 
@@ -7,6 +34,7 @@ DEFAULT_RETAIN = {logging.DEBUG:50,logging.INFO:50,logging.WARNING:20,logging.ER
 
 
 class LogRetainFilter():
+    """Perform filtering in the retained messages"""
 
     def __init__(self, name:str, level=logging.INFO, count=10):
         self.name:str = name
@@ -35,6 +63,7 @@ class LogRetainSuppress(LogRetainFilter):
 
 
 class LogRetainHandler(logging.Handler):
+    """Retain latest log messages by log level"""
     
     def __init__(self, retain=DEFAULT_RETAIN, level=logging.INFO):
         super().__init__(level)
@@ -47,15 +76,6 @@ class LogRetainHandler(logging.Handler):
             self._retain[k] = list()
         self._filters:list[LogRetainFilter] = list()        # list of filters to process before adding new entry
 
-
-    # record:
-        # self.name = name
-        # self.levelno = level
-        # self.levelname = _level_dict[level]
-        # self.message = message
-        # self.ct = time.time()
-        # self.msecs = int((self.ct - int(self.ct)) * 1000)
-        # self.asctime = None
 
     def emit(self, record:logging.LogRecord):
         """ Called whenever something is logged.
